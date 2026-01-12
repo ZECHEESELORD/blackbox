@@ -1,20 +1,30 @@
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 plugins {
-    id("java")
+    base
 }
 
-group = "sh.harold"
-version = "1.0-SNAPSHOT"
+allprojects {
+    group = "sh.harold"
+    version = "1.0-SNAPSHOT"
 
-repositories {
-    mavenCentral()
+    repositories {
+        mavenCentral()
+    }
 }
 
-dependencies {
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
+subprojects {
+    apply(plugin = "java")
 
-tasks.test {
-    useJUnitPlatform()
+    extensions.configure<JavaPluginExtension> {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(25))
+        }
+    }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+    }
 }
