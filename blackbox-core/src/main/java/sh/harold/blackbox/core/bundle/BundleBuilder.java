@@ -16,6 +16,7 @@ import java.util.zip.ZipOutputStream;
 import sh.harold.blackbox.core.env.EnvCollector;
 import sh.harold.blackbox.core.incident.IncidentReport;
 import sh.harold.blackbox.core.json.IncidentJson;
+import sh.harold.blackbox.core.report.ReportHtml;
 
 /**
  * Builds deterministic incident bundles.
@@ -53,6 +54,7 @@ public final class BundleBuilder {
 
         try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(outputZip))) {
             writeIncidentJson(report, zip);
+            writeReportHtml(report, zip);
             writeRecording(recordingJfr, zip);
             writeEnvFiles(zip);
             writeExtras(sortedExtras, zip);
@@ -76,6 +78,15 @@ public final class BundleBuilder {
         try (InputStream in = Files.newInputStream(recordingJfr)) {
             in.transferTo(zip);
         }
+        zip.closeEntry();
+    }
+
+    private void writeReportHtml(IncidentReport report, ZipOutputStream zip) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        ReportHtml.write(report, buffer);
+        ZipEntry entry = zipEntry("report.html");
+        zip.putNextEntry(entry);
+        zip.write(buffer.toByteArray());
         zip.closeEntry();
     }
 
