@@ -23,7 +23,6 @@ import sh.harold.blackbox.core.capture.CapturePipeline;
 import sh.harold.blackbox.core.capture.IncidentNotifier;
 import sh.harold.blackbox.core.capture.RecordingDumper;
 import sh.harold.blackbox.core.config.BlackboxConfig;
-import sh.harold.blackbox.core.config.BlackboxConfigLoader;
 import sh.harold.blackbox.core.jfr.JfrController;
 import sh.harold.blackbox.core.notify.discord.DiscordWebhookNotifier;
 import sh.harold.blackbox.core.notify.discord.HttpClientWebhookTransport;
@@ -64,8 +63,8 @@ final class BlackboxRuntime implements AutoCloseable {
         System.Logger logger = System.getLogger(BlackboxRuntime.class.getName());
 
         Path dataDir = plugin.getDataDirectory();
-        Path configPath = dataDir.resolve("blackbox.properties");
-        BlackboxConfig config = BlackboxConfigLoader.loadOrCreate(configPath, logger);
+        Path configPath = HytaleBlackboxConfig.path(dataDir);
+        BlackboxConfig config = HytaleBlackboxConfig.loadOrCreate(dataDir, logger);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
             new NamedThreadFactory("blackbox-scheduler")

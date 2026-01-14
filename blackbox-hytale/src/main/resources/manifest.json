@@ -1,0 +1,9 @@
+{
+  "Group": "Harold",
+  "Name": "Blackbox",
+  "Version": "0.1",
+  "Website": "https://github.com/harold/blackbox",
+  "Description": "Always on incident recorder (JFR) for Hytale dedicated servers.",
+  "Main": "sh.harold.blackbox.hytale.BlackboxPlugin",
+  "ServerVersion": "*"
+}
