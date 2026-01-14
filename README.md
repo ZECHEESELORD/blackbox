@@ -1,5 +1,8 @@
 # Blackbox ![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge) ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge) ![Platform](https://img.shields.io/badge/platform-hytale-orange?style=for-the-badge)
 
+<img width="2560" height="1392" alt="image" src="https://github.com/user-attachments/assets/82177e16-cda8-4611-8c52-ca9c7ca3e66a" />
+
+> Generated JFR being viewed in JDK Mission Control
 ---
 
 ## **The Flight Recorder for Hytale dedicated servers.**
