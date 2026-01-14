@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import sh.harold.blackbox.core.bundle.BundleAttachment;
 import sh.harold.blackbox.core.bundle.BundleBuilder;
 import sh.harold.blackbox.core.incident.IncidentId;
 import sh.harold.blackbox.core.incident.IncidentIds;
@@ -30,6 +31,7 @@ public final class CapturePipeline {
     private final BundleBuilder bundleBuilder;
     private final RetentionManager retentionManager;
     private final IncidentNotifier notifier;
+    private final BundleExtrasProvider extrasProvider;
     private final Path incidentDir;
     private final Path tempDir;
     private final CapturePolicy policy;
@@ -47,12 +49,41 @@ public final class CapturePipeline {
         CapturePolicy policy,
         System.Logger logger
     ) {
+        this(
+            clock,
+            triggerEngine,
+            dumper,
+            bundleBuilder,
+            retentionManager,
+            notifier,
+            BundleExtrasProvider.none(),
+            incidentDir,
+            tempDir,
+            policy,
+            logger
+        );
+    }
+
+    public CapturePipeline(
+        Clock clock,
+        TriggerEngine triggerEngine,
+        RecordingDumper dumper,
+        BundleBuilder bundleBuilder,
+        RetentionManager retentionManager,
+        IncidentNotifier notifier,
+        BundleExtrasProvider extrasProvider,
+        Path incidentDir,
+        Path tempDir,
+        CapturePolicy policy,
+        System.Logger logger
+    ) {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.triggerEngine = Objects.requireNonNull(triggerEngine, "triggerEngine");
         this.dumper = Objects.requireNonNull(dumper, "dumper");
         this.bundleBuilder = Objects.requireNonNull(bundleBuilder, "bundleBuilder");
         this.retentionManager = Objects.requireNonNull(retentionManager, "retentionManager");
         this.notifier = Objects.requireNonNull(notifier, "notifier");
+        this.extrasProvider = Objects.requireNonNull(extrasProvider, "extrasProvider");
         this.incidentDir = Objects.requireNonNull(incidentDir, "incidentDir");
         this.tempDir = Objects.requireNonNull(tempDir, "tempDir");
         this.policy = Objects.requireNonNull(policy, "policy");
@@ -77,7 +108,15 @@ public final class CapturePipeline {
             Path dumpedRecording = dumper.dump(tempRecording);
 
             Path outputZip = incidentDir.resolve("incident-" + id.value() + ".zip");
-            bundleBuilder.build(report, dumpedRecording, outputZip, List.of());
+
+            List<BundleAttachment> extras = List.of();
+            try {
+                extras = extrasProvider.extras(report, event);
+            } catch (Exception e) {
+                logger.log(System.Logger.Level.WARNING, "Bundle extras provider failed.", e);
+            }
+
+            bundleBuilder.build(report, dumpedRecording, outputZip, extras);
 
             try {
                 retentionManager.enforce(incidentDir, policy.retention());

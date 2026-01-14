@@ -126,18 +126,13 @@ class CapturePipelineTest {
         }
     }
 
-    private static final class FakeRecordingDumper implements RecordingDumper {
-        private final byte[] bytes;
-
-        private FakeRecordingDumper(byte[] bytes) {
-            this.bytes = bytes;
-        }
+    private record FakeRecordingDumper(byte[] bytes) implements RecordingDumper {
 
         @Override
-        public Path dump(Path target) throws Exception {
-            Files.createDirectories(target.getParent());
-            Files.write(target, bytes);
-            return target;
+            public Path dump(Path target) throws Exception {
+                Files.createDirectories(target.getParent());
+                Files.write(target, bytes);
+                return target;
+            }
         }
-    }
 }

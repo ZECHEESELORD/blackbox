@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
+import java.text.ParseException;
+import jdk.jfr.Configuration;
 import jdk.jfr.EventSettings;
 import jdk.jfr.Recording;
 
@@ -12,10 +14,14 @@ import jdk.jfr.Recording;
  * Controls a single rolling JFR recording and exposes a minimal API for dumping it.
  */
 public final class JfrController implements AutoCloseable {
+    private static final String DEFAULT_CONFIGURATION = "default";
+    private static final String DUMP_MARKER_PREFIX = "blackbox dump:";
+
     private final Duration maxAge;
     private final long maxSizeBytes;
     private final String recordingName;
     private Recording recording;
+    private final System.Logger logger = System.getLogger(JfrController.class.getName());
 
     public JfrController(Duration maxAge, long maxSizeBytes, String recordingName) {
         this.maxAge = Objects.requireNonNull(maxAge, "maxAge");
@@ -27,11 +33,12 @@ public final class JfrController implements AutoCloseable {
         if (recording != null) {
             return;
         }
-        Recording created = new Recording();
+        Recording created = createConfiguredRecording(DEFAULT_CONFIGURATION);
         created.setName(recordingName);
         created.setToDisk(true);
         created.setMaxAge(maxAge);
         created.setMaxSize(maxSizeBytes);
+        enableMarkerEvent(created);
         created.start();
         this.recording = created;
     }
@@ -46,6 +53,9 @@ public final class JfrController implements AutoCloseable {
         if (parent != null) {
             Files.createDirectories(parent);
         }
+        BlackboxMarkerEvent marker = new BlackboxMarkerEvent();
+        marker.message = DUMP_MARKER_PREFIX + " " + target.getFileName();
+        marker.commit();
         requireRecording().dump(target);
     }
 
@@ -64,5 +74,41 @@ public final class JfrController implements AutoCloseable {
             throw new IllegalStateException("Recording has not been started.");
         }
         return recording;
+    }
+
+    private Recording createConfiguredRecording(String configurationName) {
+        Recording configured = tryLoadConfiguration(configurationName);
+        if (configured != null) {
+            return configured;
+        }
+
+        if (!"profile".equals(configurationName)) {
+            Recording profile = tryLoadConfiguration("profile");
+            if (profile != null) {
+                return profile;
+            }
+        }
+
+        logger.log(System.Logger.Level.WARNING, "Failed to load JFR configurations. Falling back to an unconfigured recording.");
+        return new Recording();
+    }
+
+    private void enableMarkerEvent(Recording recording) {
+        try {
+            recording.enable(BlackboxMarkerEvent.class)
+                .withoutStackTrace()
+                .withThreshold(Duration.ZERO);
+        } catch (IllegalArgumentException e) {
+            logger.log(System.Logger.Level.WARNING, "Failed to enable marker event.", e);
+        }
+    }
+
+    private Recording tryLoadConfiguration(String configurationName) {
+        try {
+            return new Recording(Configuration.getConfiguration(configurationName));
+        } catch (IOException | ParseException e) {
+            logger.log(System.Logger.Level.DEBUG, "Failed to load JFR configuration '" + configurationName + "'.", e);
+            return null;
+        }
     }
 }

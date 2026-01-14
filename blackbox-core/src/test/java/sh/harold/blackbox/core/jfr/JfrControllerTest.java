@@ -14,6 +14,30 @@ import org.junit.jupiter.api.io.TempDir;
 class JfrControllerTest {
 
     @Test
+    void dumpsRecordingWithEventsByDefault(@TempDir Path tempDir) throws Exception {
+        assertTrue(FlightRecorder.isAvailable(), "JFR is not available in this runtime.");
+        Path dumpPath = tempDir.resolve("recording.jfr");
+
+        try (JfrController controller = new JfrController(Duration.ofSeconds(60), 16L * 1024L * 1024L,
+            "blackbox-test")) {
+            controller.start();
+            controller.dump(dumpPath);
+        }
+
+        assertTrue(Files.exists(dumpPath), "Expected JFR dump to exist.");
+        assertTrue(Files.size(dumpPath) > 0, "Expected JFR dump to be non-empty.");
+
+        boolean foundAnyEvent = false;
+        try (RecordingFile recordingFile = new RecordingFile(dumpPath)) {
+            if (recordingFile.hasMoreEvents()) {
+                foundAnyEvent = true;
+            }
+        }
+
+        assertTrue(foundAnyEvent, "Expected at least one event in the recording.");
+    }
+
+    @Test
     void dumpsRecordingWithMarkerEvent(@TempDir Path tempDir) throws Exception {
         assertTrue(FlightRecorder.isAvailable(), "JFR is not available in this runtime.");
         Path dumpPath = tempDir.resolve("recording.jfr");
@@ -21,7 +45,6 @@ class JfrControllerTest {
         try (JfrController controller = new JfrController(Duration.ofSeconds(60), 16L * 1024L * 1024L,
             "blackbox-test")) {
             controller.start();
-            controller.enableEvent("sh.harold.blackbox.marker").withThreshold(Duration.ZERO);
 
             for (int i = 0; i < 3; i++) {
                 BlackboxMarkerEvent event = new BlackboxMarkerEvent();
