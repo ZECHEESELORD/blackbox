@@ -29,6 +29,7 @@ import sh.harold.blackbox.core.trigger.heartbeat.HeartbeatRegistry;
 
 final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
     private static final System.Logger LOGGER = System.getLogger(HytaleBundleExtrasProvider.class.getName());
+    private static final String NITRADO_WEB_SERVER_CLASS = "de.nitrado.hytale.NitradoWebServer";
 
     private final HeartbeatRegistry heartbeatRegistry;
     private final int logTailLines;
@@ -78,12 +79,8 @@ final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
         } catch (Exception e) {
             out.append("hytale.version=<unavailable>\n");
         }
-        try {
-            boolean hasNitrado = Class.forName("de.nitrado.hytale.NitradoWebServer") != null;
-            out.append("nitrado.present=").append(hasNitrado).append('\n');
-        } catch (ClassNotFoundException e) {
-            out.append("nitrado.present=false\n");
-        }
+        boolean hasNitrado = isClassPresent(NITRADO_WEB_SERVER_CLASS, HytaleBundleExtrasProvider.class.getClassLoader());
+        out.append("nitrado.present=").append(hasNitrado).append('\n');
         return out.toString();
     }
 
@@ -197,6 +194,22 @@ final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
             raf.seek(startPos);
             raf.readFully(tailBytes);
             return new String(tailBytes, StandardCharsets.UTF_8);
+        }
+    }
+
+    static boolean isClassPresent(String className, ClassLoader classLoader) {
+        if (className == null || className.isBlank()) {
+            return false;
+        }
+        try {
+            // false => link/load only, do not run static initializers.
+            Class.forName(className, false, classLoader);
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        } catch (Throwable t) {
+            LOGGER.log(System.Logger.Level.WARNING, "Class presence check failed for '" + className + "'.", t);
+            return false;
         }
     }
 }
