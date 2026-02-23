@@ -1,11 +1,15 @@
 package sh.harold.blackbox.core.jfr;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import jdk.jfr.FlightRecorder;
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 import org.junit.jupiter.api.Test;
@@ -70,5 +74,26 @@ class JfrControllerTest {
         }
 
         assertTrue(foundMarker, "Expected at least one marker event in the recording.");
+    }
+
+    @Test
+    void disabledEventsAreAppliedToRecordingSettings(@TempDir Path tempDir) throws Exception {
+        assertTrue(FlightRecorder.isAvailable(), "JFR is not available in this runtime.");
+        try (JfrController controller = new JfrController(
+            Duration.ofSeconds(60),
+            16L * 1024L * 1024L,
+            "blackbox-test",
+            List.of("jdk.CPULoad")
+        )) {
+            controller.start();
+            Recording recording = extractRecording(controller);
+            assertEquals("false", recording.getSettings().get("jdk.CPULoad#enabled"));
+        }
+    }
+
+    private static Recording extractRecording(JfrController controller) throws Exception {
+        Field field = JfrController.class.getDeclaredField("recording");
+        field.setAccessible(true);
+        return (Recording) field.get(controller);
     }
 }
