@@ -1,10 +1,15 @@
 package sh.harold.blackbox.hytale;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class HytaleBundleExtrasProviderTest {
 
@@ -36,6 +41,29 @@ class HytaleBundleExtrasProviderTest {
         ClassLoader throwingLoader = new ThrowingLoader(HytaleBundleExtrasProviderTest.class.getClassLoader());
         boolean present = HytaleBundleExtrasProvider.isClassPresent("boom.Broken", throwingLoader);
         assertFalse(present);
+    }
+
+    @Test
+    void readTailRespectsByteBoundForLargeSingleLine(@TempDir Path tempDir) throws Exception {
+        Path log = tempDir.resolve("latest.log");
+        String prefix = "x".repeat(20_000);
+        String suffix = "::THE_END::";
+        Files.writeString(log, prefix + suffix, StandardCharsets.UTF_8);
+
+        String tail = HytaleBundleExtrasProvider.readTail(log, 1, 64);
+
+        assertTrue(tail.endsWith(suffix));
+        assertTrue(tail.getBytes(StandardCharsets.UTF_8).length <= 64);
+    }
+
+    @Test
+    void readTailKeepsLineBehaviorWhenWithinByteBound(@TempDir Path tempDir) throws Exception {
+        Path log = tempDir.resolve("lines.log");
+        Files.writeString(log, "a\nb\nc\n", StandardCharsets.UTF_8);
+
+        String tail = HytaleBundleExtrasProvider.readTail(log, 2, 1024);
+
+        assertEquals("b\nc\n", tail);
     }
 
     private static final class InitMarker {

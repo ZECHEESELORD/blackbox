@@ -30,6 +30,7 @@ import sh.harold.blackbox.core.trigger.heartbeat.HeartbeatRegistry;
 final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
     private static final System.Logger LOGGER = System.getLogger(HytaleBundleExtrasProvider.class.getName());
     private static final String NITRADO_WEB_SERVER_CLASS = "de.nitrado.hytale.NitradoWebServer";
+    private static final int MAX_LOG_TAIL_BYTES = 256 * 1024;
 
     private final HeartbeatRegistry heartbeatRegistry;
     private final int logTailLines;
@@ -161,7 +162,14 @@ final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
         }
     }
 
-    private static String readTail(Path file, int lines) throws IOException {
+    static String readTail(Path file, int lines) throws IOException {
+        return readTail(file, lines, MAX_LOG_TAIL_BYTES);
+    }
+
+    static String readTail(Path file, int lines, int maxBytes) throws IOException {
+        if (lines <= 0 || maxBytes <= 0) {
+            return "";
+        }
         try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "r")) {
             long length = raf.length();
             if (length == 0) {
@@ -188,7 +196,9 @@ final class HytaleBundleExtrasProvider implements BundleExtrasProvider {
                 pos--;
             }
 
-            long startPos = Math.max(pos, 0);
+            long lineBoundStart = Math.max(pos, 0);
+            long byteBoundStart = Math.max(0, length - maxBytes);
+            long startPos = Math.max(lineBoundStart, byteBoundStart);
             int tailLength = (int) (length - startPos);
             byte[] tailBytes = new byte[tailLength];
             raf.seek(startPos);
