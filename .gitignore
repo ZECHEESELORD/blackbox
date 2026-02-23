@@ -1,7 +1,7 @@
 .gradle
 build/
 internal/
-/run/
+run/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
