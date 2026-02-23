@@ -5,7 +5,9 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -154,7 +156,7 @@ public final class CapturePipeline {
         }
     }
 
-    private static IncidentReport buildReport(
+    private IncidentReport buildReport(
         IncidentId id,
         Instant createdAt,
         TriggerResult result,
@@ -175,7 +177,11 @@ public final class CapturePipeline {
             List.of(summaryLine),
             List.of("Review the incident report and recording.")
         );
-        return new IncidentReport(meta, summary, event.attrs());
+        Map<String, String> context = event.attrs();
+        if (redactor.hasPatterns()) {
+            context = redactContext(context);
+        }
+        return new IncidentReport(meta, summary, context);
     }
 
     private static final java.util.Set<String> TEXT_EXTENSIONS = java.util.Set.of(
@@ -192,6 +198,14 @@ public final class CapturePipeline {
             }
         }
         return result;
+    }
+
+    private Map<String, String> redactContext(Map<String, String> context) {
+        Map<String, String> redacted = new LinkedHashMap<>(context.size());
+        for (Map.Entry<String, String> entry : context.entrySet()) {
+            redacted.put(entry.getKey(), redactor.redact(entry.getValue()));
+        }
+        return redacted;
     }
 
     private static boolean isTextPath(String path) {
