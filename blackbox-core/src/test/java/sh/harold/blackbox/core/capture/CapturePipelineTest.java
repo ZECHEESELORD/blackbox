@@ -158,6 +158,12 @@ class CapturePipelineTest {
         assertFalse(json.contains("ghp_1234567890ABCDEFGHIJKLMN"));
         assertFalse(json.contains("CUSTOM_SECRET_ABC123"));
 
+        String reportHtml = readEntry(zipPath, "report.html");
+        assertTrue(reportHtml.contains("Trigger context"));
+        assertTrue(reportHtml.contains("[REDACTED]"));
+        assertFalse(reportHtml.contains("ghp_1234567890ABCDEFGHIJKLMN"));
+        assertFalse(reportHtml.contains("CUSTOM_SECRET_ABC123"));
+
         String logTail = readEntry(zipPath, "extras/server-log.txt");
         assertTrue(logTail.contains("[REDACTED]"));
         assertFalse(logTail.contains("hunter2"));
